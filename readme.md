@@ -1,2 +1,0 @@
-## DESQ2 Analsysi
-
