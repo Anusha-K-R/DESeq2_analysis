@@ -196,4 +196,10 @@ pheatmap(sig_norm_counts,
          scale = "row")
 dev.off()
 
+#Save results
+write.table(deg_sig,
+            "DESeq2_DEG_sig.txt",
+            sep = "\t",
+            row.names = TRUE)
+
 quit()
