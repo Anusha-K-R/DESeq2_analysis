@@ -1,31 +1,39 @@
-#-----Libraries-----
-#Install BiocManager as per Bioconductor instructions
+---
+title: "RNA seq analysis"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+Install BiocManager as per Bioconductor instructions
+```{r}
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 BiocManager::install(version = "3.19")
+```
 
-#Install required packages
+Install and load required packages
+```{r}
 BiocManager::install(c("DESeq2",
                        "affy",
                        "pheatmap",
                        "RColorBrewer",
                        "tidyverse",
                        "apeglm"))
-
-#Load required packages
 library(DESeq2)
 library(affy)
 library(pheatmap)
 library(RColorBrewer)
 library(tidyverse)
 library(apeglm)
+```
 
-#-----Importing, defining and reordering the data-----
-#Set working directory
+Set working directory and load the rawcount table
+```{r}
 setwd("C:/workspace/github/differential-expression-analysis/Output/")
 list.files()
 
-#Import and rawcount table
 rawcount <- read.table("C:/workspace/github/differential-expression-analysis/Input/rawcounts.csv",
                        sep = ",",
                        header = TRUE,
@@ -33,8 +41,10 @@ rawcount <- read.table("C:/workspace/github/differential-expression-analysis/Inp
 
 head(rawcount) #Check column names
 dim(rawcount) #Check row count
+```
 
-#Define metadata
+Define metadata
+```{r}
 sample_type <- c("smoc2_oe",
                  "smoc2_oe",
                  "smoc2_oe",
@@ -64,35 +74,39 @@ metadata <- data.frame(row.names = TRUE,
                        row_names,
                        sample_type,
                        condition)
+
 #Asign colors to conditions
 metadata$color <- defcolor[as.vector(metadata$condition)]
 
 head(metadata) #Check table structure
 table(metadata$condition) #Count number of samples per condition
+```
 
-# Define reorder parameters to match metadata
+Reorder the columns of rawcount table to match the row order of metadata
+```{r}
+# Define reorder parameters
 fn <- match(rownames(metadata),
             colnames(rawcount))
 
-#Reorder the colums to match metadata
+#Reorder the colums
 reordered_rawcounts <- rawcount[, fn]
-
-# Check the order
 if (identical(colnames(reordered_rawcounts),
               rownames(metadata)) == FALSE)
   print("sample order of the dataset do not match with rows of metadata")
+```
 
-#-----Visualize rawcount data---------
-png(filename = "Rawreads_per_Sample.png")
+Visualize rawcount data
+```{r}
 barplot(colSums(reordered_rawcounts) / 1000000,
         col = metadata$color,
         ylab = "Million counts",
         cex.names = 1,
         las = 2,
         ylim = c(0, 30))
-dev.off()
+```
 
-#----------Normalize gene counts----------
+Normalize gene counts
+```{r}
 # Create a DESeq2 object
 dds <- DESeqDataSetFromMatrix(countData = reordered_rawcounts,
                               colData =  metadata,
@@ -104,29 +118,33 @@ dds <- estimateSizeFactors(dds)
 # Extract the normalized counts
 normalized_count <- counts(dds,
                            normalized = TRUE)
+```
 
-#---------Plot normalized data---------
+
+PCA plot of transformed normalized gene counts
+```{r}
 vsd <- vst(dds, blind = TRUE) # Transform the normalized counts
 # Plot the PCA of PC1 and PC2
-png(filename = "PCA_Normalized_Counts.png")
 plotPCA(vsd,
         intgroup = "condition")
-dev.off()
+```
 
+Plot heatmap of corelation values
+```{r}
 vsd_mat <- assay(vsd) # Extract the transformed counts matrix
 vsd_cor <- cor(vsd_mat) # Compute the correlation between samples
-# Plot the heatmap for corelation values
-png(filename = "Heatmap_Corelation.png")
-pheatmap(vsd_cor)
-dev.off()
+pheatmap(vsd_cor) # Plot heatmap of correlation values
+```
 
-# Plot dispersions
+Plot dispersions
+```{r}
 dds_dis <- DESeq(dds)
-png(filename = "Dispersion_Normalized_Counts.png")
 plotDispEsts(dds_dis)
-dev.off()
+```
 
-#--------Extract, shrink and filter results---------
+Extract and shrink results
+```{r}
+# Extract results
 # Extract results
 res <- results(dds_dis,
                alpha = 0.05,
@@ -139,22 +157,27 @@ res <- lfcShrink(dds_dis,
                  res = res)
 
 summary(res) #Overview of the results
+```
 
-#MA plot
-png(filename = "MA_plot_Log2FC.png")
+MA plot of log2FC
+```{r}
 plotMA(res,
        alpha = 0.1)
 abline(h = c(-1:1),
        col = "red")
-dev.off()
+```
 
+Subset the significant DEGs
+```{r}
 #Generate result table
 deg <- data.frame(res)
 # Create subset of results having only the significant DEGs
 deg_sig <- subset(deg,
                   padj < 0.05)
+```
 
-#---------Volcano plot------------
+Volcano plot of significant DEGs, where red and green dots represent down-regulated and up-regulated genes, respectively, with the fold change of greater than 1.
+```{r}
 de <- deg[complete.cases(deg), ] #Filter out NA
 #Add new column to define differential expression
 de$diffexpressed <- "NO"
@@ -165,8 +188,6 @@ de$diffexpressed[de$log2FoldChange < -1 & de$padj < 0.05] <- "DOWN"
 mycolors <- c("red", "green", "grey")
 names(mycolors) <- c("DOWN", "UP", "NO")
 
-#Volcano plot
-png(filename = "Volcano_Plot_Log2FC.png")
 ggplot(data = de,
        aes(x = log2FoldChange,
            y = -log10(pvalue),
@@ -178,9 +199,10 @@ ggplot(data = de,
              col = "black") +
   geom_hline(yintercept = -log10(0.05),
              col = "black")
-dev.off()
+```
 
-#----Heatmap------
+Heatmap of normalized counts of significant DEGs
+```{r}
 #Generate a table with normalized counts
 normalized_count_table <- data.frame(normalized_count)
 
@@ -188,17 +210,15 @@ normalized_count_table <- data.frame(normalized_count)
 sig_norm_counts <- normalized_count_table[rownames(deg_sig), ]
 
 # Plot heatmap
-png(filename = "DEG_Heatmap.png")
 pheatmap(sig_norm_counts,
          cluster_rows = TRUE,
          show_rownames = FALSE,
          scale = "row")
-dev.off()
-
-#Save results
+```
+Export DEG data
+```{r}
 write.table(deg_sig,
             "DESeq2_DEG_sig.txt",
             sep = "\t",
             row.names = TRUE)
-
-quit()
+```
