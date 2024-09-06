@@ -56,19 +56,26 @@ row_names <- c("smoc2_fibrosis1",
                "smoc2_normal1",
                "smoc2_normal3",
                "smoc2_normal4")
-defcolor <- c("fibrosis" <- "salmon1",
-              "normal" <- "cadetblue1")
+color <- c("salmon1",
+           "salmon1",
+           "salmon1",
+           "salmon1",
+           "cadetblue1",
+           "cadetblue1",
+           "cadetblue1")
 
 #Create metadata datadrame
 metadata <- data.frame(row.names = TRUE,
                        row_names,
                        sample_type,
-                       condition)
-#Asign colors to conditions
-metadata$color <- defcolor[as.vector(metadata$condition)]
+                       condition,
+                       color)
 
-head(metadata) #Check table structure
-table(metadata$condition) #Count number of samples per condition
+View(metadata) #view the table
+
+#Check the data order with respect to metadata
+all(colnames(rawcount) ==
+    rownames(metadata))
 
 # Define reorder parameters to match metadata
 fn <- match(rownames(metadata),
@@ -77,10 +84,9 @@ fn <- match(rownames(metadata),
 #Reorder the colums to match metadata
 reordered_rawcounts <- rawcount[, fn]
 
-# Check the order
-if (identical(colnames(reordered_rawcounts),
-              rownames(metadata)) == FALSE)
-  print("sample order of the dataset do not match with rows of metadata")
+# Confirm the data order (all() function can also be used)
+identical(colnames(reordered_rawcounts),
+          rownames(metadata))
 
 #-----Visualize rawcount data---------
 png(filename = "Rawreads_per_Sample.png")
@@ -92,7 +98,7 @@ barplot(colSums(reordered_rawcounts) / 1000000,
         ylim = c(0, 30))
 dev.off()
 
-#----------Normalize gene counts----------
+#----------Normalize gene counts for the library size----------
 # Create a DESeq2 object
 dds <- DESeqDataSetFromMatrix(countData = reordered_rawcounts,
                               colData =  metadata,
@@ -106,7 +112,8 @@ normalized_count <- counts(dds,
                            normalized = TRUE)
 
 #---------Plot normalized data---------
-vsd <- vst(dds, blind = TRUE) # Transform the normalized counts
+# Log transformation of the the normalized counts
+vsd <- vst(dds, blind = TRUE) 
 # Plot the PCA of PC1 and PC2
 png(filename = "PCA_Normalized_Counts.png")
 plotPCA(vsd,
@@ -120,33 +127,45 @@ png(filename = "Heatmap_Corelation.png")
 pheatmap(vsd_cor)
 dev.off()
 
-# Plot dispersions
-dds_dis <- DESeq(dds)
+# Estimate dispersions and fit model
+dds <- DESeq(dds)
+
+#Check for comparison order; expectation: condition_fibrosis_vs_normal
+resultsNames(dds)
+
+#relevel to set normal as reference, 
+dds$condition <- relevel(dds$condition, ref = "normal")
+#re-run waldTest 
+dds <- nbinomWaldTest(dds)
+#check comparison order again
+resultsNames(dds)
+
 png(filename = "Dispersion_Normalized_Counts.png")
-plotDispEsts(dds_dis)
+plotDispEsts(dds)
 dev.off()
 
 #--------Extract, shrink and filter results---------
 # Extract results
-res <- results(dds_dis,
+res <- results(dds,
                alpha = 0.05,
                lfcThreshold = 0.32) #0.32 lfcThreshold for 1.25 fold change
-
+#MA plot before shrinking
+png(filename = "MA_plot_Log2FC.png")
+plotMA(res,
+       ylim = c(-8,8))
+dev.off()
 # Shrink the log2 fold changes
-res <- lfcShrink(dds_dis,
+res <- lfcShrink(dds,
                  type = "apeglm",
                  coef = 2,
                  res = res)
-
-summary(res) #Overview of the results
-
-#MA plot
-png(filename = "MA_plot_Log2FC.png")
+#Note: This throws a warning if results have transcripts with baseMean=0
+#MA plot after shrinking
+png(filename = "MA_plot_Shrunken_Log2FC.png")
 plotMA(res,
-       alpha = 0.1)
-abline(h = c(-1:1),
-       col = "red")
+       ylim = c(-8,8))
 dev.off()
+summary(res) #Overview of the results
 
 #Generate result table
 deg <- data.frame(res)
