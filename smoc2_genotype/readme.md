@@ -1,5 +1,5 @@
 ## DESeq2 Analysis - click the link below
-https://htmlpreview.github.io/?https://github.com/Anusha-K-R/differential-expression-analysis/blob/main/DESeq2_analysis.html
+https://htmlpreview.github.io/?https://github.com/Anusha-K-R/DESeq2_analysis/blob/main/smoc2_genotype/DESeq2_smoc2.html
 
 
 ## Resources
