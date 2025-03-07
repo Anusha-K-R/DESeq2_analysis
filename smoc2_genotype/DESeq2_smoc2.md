@@ -131,6 +131,7 @@ barplot(colSums(reordered_rawcounts) / 1000000,
   ylim = c(0, 30)
 )
 ```
+![alt text](Output/Rawreads_per_Sample.png)
 #### Normalize gene counts
 ```{r}
 # Create a DESeq2 object
@@ -148,7 +149,6 @@ normalized_count <- counts(dds,
   normalized = TRUE
 )
 ```
-
 #### Visualize normalized counts
 ```{r}
 # Log transformation of the the normalized counts
@@ -165,7 +165,8 @@ vsd_cor <- cor(vsd_mat) # Compute the correlation between samples
 # Plot the heatmap for corelation values
 pheatmap(vsd_cor)
 ```
-
+![alt text](Output/PCA_Normalized_Counts.png)
+![alt text](Output/Heatmap_Corelation.png)
 #### Estimate size factors and dispersion followed by fitting negative binomial model (Wald test)
 ```{r}
 dds <- DESeq(dds)
@@ -189,7 +190,7 @@ resultsNames(dds)
 ```{r}
 plotDispEsts(dds)
 ```
-
+![alt text](Output/Dispersion_Normalized_Counts.png)
 #### Extract the log2 fold changes of the fibrosis group relative to normal
 #### Note:
 Setting a threshold to fold change (not always prefered) will return lesser but biologically relevant DEGs 
@@ -205,7 +206,7 @@ plotMA(res,
   ylim = c(-8, 8)
 )
 ```
-
+![alt text](Output/MA_plot_Log2FC.png)
 #### Improve the estimated log2 fold change by shrinking the results
 #### Note:
 This might throw a warning if results have transcripts with baseMean=0.
@@ -222,7 +223,7 @@ plotMA(res,
 )
 
 ```
-
+![alt text](Output/MA_plot_Shrunken_Log2FC.png)
 #### Extract and save the significant DEGs from the results with padj < 0.05
 ```{r}
 summary(res) # Overview of the results
@@ -280,7 +281,7 @@ ggplot(
     col = "black"
   )
 ```
-
+![alt text](Output/Volcano_Plot_Log2FC.png)
 #### Heatmap of normalized counts of significant DEGs
 ```{r}
 # Generate a table with normalized counts
@@ -296,3 +297,4 @@ pheatmap(sig_norm_counts,
   scale = "row"
 )
 ```
+![alt text](Output/Heatmap_DEG.png)
