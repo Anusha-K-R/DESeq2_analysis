@@ -1,14 +1,14 @@
 # RNA Seq workflow: Differential gene expression analysis
 ## Differential gene expression analysis based on the negative binomial distribution using Bioconductor - DESeq2 R package
-### 1. Installing and loading required Bioconductor R packages
-Install BiocManager, if required
+### 0. Installing and loading required Bioconductor R packages
+#### Install BiocManager, if required
 ```{r}
 if (!require("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
   BiocManager::install(version = "3.19")
 }
 ```
-Install and load all bioconductor packages
+#### Install and load all bioconductor packages
 ```{r}
 packages <- c("DESeq2",
               "pheatmap",
@@ -22,8 +22,8 @@ if(length(new.packages))
 
 invisible(lapply(packages, library, character.only=TRUE))
 ```
-### 2. Setting working directory and loading the data
-Set the directory having the current script as 'working directory' and create an output file.
+### 1. Loading data
+#### Set the directory having the current script as 'working directory' and create an output file.
 ```{r}
 if (!require("rstudioapi")) {
   install.packages("rstudioapi")
@@ -37,7 +37,7 @@ ifelse(!dir.exists(file.path("./Output")),
 )
 list.files()
 ```
-Load the data file
+#### Load the data file
 ```{r}
 rawcount <- read.table("./Input/rawcounts.csv",
   sep = ",",
@@ -49,10 +49,9 @@ head(rawcount) # Check column names
 dim(rawcount) # Check row count
 
 ```
-### 3. Data Preparation
-Define and create metadata table
+### 2. Data Preparation
+#### Define and create metadata table
 ```{r}
-# Define metadata
 sample_type <- c(
   "smoc2_oe",
   "smoc2_oe",
@@ -90,7 +89,6 @@ color <- c(
   "cadetblue1"
 )
 
-# Create metadata datadrame
 metadata <- data.frame(
   row.names = TRUE,
   row_names,
@@ -102,9 +100,9 @@ metadata <- data.frame(
 metadata # View the table
 ```
 
-Reorder the columns of rawcount table to match the row order of metadata
+#### Check and reorder the columns of rawcount table to match the row order of metadata
 ```{r}
-# Check the data order with respect to metadata
+# Check the data order
 all(colnames(rawcount) == rownames(metadata))
 
 # Define a function to reorder data columns to match metadata
@@ -122,8 +120,8 @@ identical(
   rownames(metadata)
 )
 ```
-
-Visualize rawcount data
+### 3. Exploring and modeling data
+#### Visualize rawcount data
 ```{r}
 barplot(colSums(reordered_rawcounts) / 1000000,
   col = metadata$color,
@@ -133,8 +131,7 @@ barplot(colSums(reordered_rawcounts) / 1000000,
   ylim = c(0, 30)
 )
 ```
-
-Normalize gene counts
+#### Normalize gene counts
 ```{r}
 # Create a DESeq2 object
 dds <- DESeqDataSetFromMatrix(
@@ -152,7 +149,7 @@ normalized_count <- counts(dds,
 )
 ```
 
-Visualize normalized counts
+#### Visualize normalized counts
 ```{r}
 # Log transformation of the the normalized counts
 vsd <- vst(dds, blind = TRUE)
@@ -169,11 +166,12 @@ vsd_cor <- cor(vsd_mat) # Compute the correlation between samples
 pheatmap(vsd_cor)
 ```
 
-Estimate size factors and dispersion followed by fitting negative binomial model (Wald test)
+#### Estimate size factors and dispersion followed by fitting negative binomial model (Wald test)
 ```{r}
 dds <- DESeq(dds)
 ```
 
+#### Note: 
 Check default order of comparison selected, which is indicated by "condition_test_vs_reference". If the wrong group is set as reference, re-level and run wald test again to change the order.
 ```{r}
 # Check for comparison order; expectation: condition_fibrosis_vs_normal
@@ -187,12 +185,13 @@ dds <- nbinomWaldTest(dds)
 resultsNames(dds)
 ```
 
-Explore the fit of the data to the negative binomial model by plotting the dispersion estimates
+#### Explore the fit of the data to the negative binomial model by plotting the dispersion estimates
 ```{r}
 plotDispEsts(dds)
 ```
 
-Extract the log2 fold changes of the fibrosis group relative to normal
+#### Extract the log2 fold changes of the fibrosis group relative to normal
+#### Note:
 Setting a threshold to fold change (not always prefered) will return lesser but biologically relevant DEGs 
 ```{r}
 # Extract results
@@ -207,8 +206,9 @@ plotMA(res,
 )
 ```
 
-Improve the estimated log2 fold change by shrinking the results
-Note: This might throw a warning if results have transcripts with baseMean=0.
+#### Improve the estimated log2 fold change by shrinking the results
+#### Note:
+This might throw a warning if results have transcripts with baseMean=0.
 ```{r}
 # Shrink the log2 fold changes
 res <- lfcShrink(dds,
@@ -223,7 +223,7 @@ plotMA(res,
 
 ```
 
-Extract and save the significant DEGs from the results with padj < 0.05
+#### Extract and save the significant DEGs from the results with padj < 0.05
 ```{r}
 summary(res) # Overview of the results
 
@@ -243,9 +243,11 @@ write.table(deg_sig,
 )
 ```
 
-Visualize the results:
+### 4. Visualizing the results
 
-Volcano plot of significant DEGs, where red and green dots represent down-regulated and up-regulated genes, respectively, with the fold change of greater than 1.
+#### Volcano plot of significant DEGs, 
+#### Note:
+Red and green dots represent down-regulated and up-regulated genes, respectively, with the fold change of greater than 1.
 ```{r}
 de <- deg[complete.cases(deg), ] # Filter out NA
 # Add new column to define differential expression
@@ -279,7 +281,7 @@ ggplot(
   )
 ```
 
-Heatmap of normalized counts of significant DEGs
+#### Heatmap of normalized counts of significant DEGs
 ```{r}
 # Generate a table with normalized counts
 normalized_count_table <- data.frame(normalized_count)
