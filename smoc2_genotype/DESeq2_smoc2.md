@@ -1,10 +1,3 @@
----
-title: "RNA seq analysis"
-output:
-  html_document:
-    df_print: paged
-  pdf_document: default
----
 # RNA Seq workflow: Differential gene expression analysis
 ## Differential gene expression analysis based on the negative binomial distribution using Bioconductor - DESeq2 R package
 ### 1. Installing and loading required Bioconductor R packages
